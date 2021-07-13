@@ -1,7 +1,7 @@
 ```
  © Rendiix <vanzdobz@gmail.com>
  Author     : Rendiix <vanzdobz@gmail.com>
- Diedit pada: 13.07.2021 10:34:09
+ Diedit pada: 13.07.2021 10:40:27
 ```
 [![GitHub](https://img.shields.io/github/license/rendiix/repository-cleaner.svg)](https://github.com/rendiix/repository-cleaner/blob/master/LICENSE)
 [![HitCount](http://hits.dwyl.io/rendiix/repository-cleaner.svg)](http://github.com/rendiix/repository-cleaner)
@@ -13,7 +13,7 @@
 [![GitHub followers](https://img.shields.io/github/followers/rendiix.svg?style=social&label=Follow&maxAge=2592000)](https://github.com/rendiix?tab=followers)
 [![GitHub contributors](https://img.shields.io/github/contributors/rendiix/repository-cleaner.svg)](https://GitHub.com/rendiix/repository-cleaner/graphs/contributors/)
 
-# repository-cleaner
+# termux-repository-cleaner
 ## easy delete your unused github repositories
 
 #### Join Discord or follow me on Twitter:
