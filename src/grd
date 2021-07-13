@@ -1,0 +1,172 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# © Rendiix <vanzdobz@gmail.com>
+# Author     : Rendiix <vanzdobz@gmail.com>
+# Diedit pada: 13.07.2021 01:23:42
+set -Eeo pipefail
+
+trap '_clean' EXIT INT TERM ERR
+_ME=$0
+VERSI=1.6
+TITLE=" *** GITHUB REPO DELETE V$VERSI *** "
+_TMP_DIR=$(mktemp -d)
+_USER=$1
+_HOME=/data/data/com.termux/files/home
+DIALOGRC=$_HOME/.dialogrc.custom
+_co=$(tput cols)
+
+_clean(){
+	dialog \
+		--title "$TITLE" \
+		--infobox "\nmembersihkan dan keluar program...\n\nTerima kasih sudah menggunakan program ini." 5 $_co
+	rm -rf $_TMP_DIR
+}
+
+_get_data() {
+	dialog \
+		--title "$TITLE" \
+		--infobox "Mendapatkan data..." 3 $_co
+	_CURL_OPTS='-H "Accept: application/vnd.github.v3+json" https://api.github.com/users'
+	curl -s ${_CURL_OPTS}/$_USER > $_TMP_DIR/rawuser
+	curl -s ${_CURL_OPTS}/$_USER/repos?per_page=100 > $_TMP_DIR/rawdata
+	if [ "$(cat $_TMP_DIR/rawuser | jq -r .message)" = "Not Found" ]; then
+		dialog --colors \
+			--title "$TITLE" \
+			--msgbox "\Zb\Z1KESALAHAN\Zn\n\nTidak ditemukan user $_USER\n\nPastikan perintah atau github user benar\n\n  Contoh:\n\n  $ grd rendiix" 15 $_co
+		exit 1
+	fi
+}
+
+_token_data(){
+	dialog \
+		--title "$TITLE" \
+		--infobox "Verifikasi token..." 3 $_co
+	_token=$(cat $_HOME/.repodel_token)
+	curl -sIH "Authorization: token $_token" https://api.github.com/users/$_USER > $_TMP_DIR/tcek
+	_token_verif=$(cat $_TMP_DIR/tcek | grep delete_repo)
+	_token_scope=$(cat $_TMP_DIR/tcek | grep x-oauth-scopes:)
+	_token_limit=$(cat $_TMP_DIR/tcek | grep -E x-ratelimit-remaining: | cut -d " " -f2)
+	_user_verif=$(cat $_TMP_DIR/tcek | grep -E HTTP/ | cut -d " " -f2)
+}
+
+_check_token(){
+	_token_data
+	if [ -z "$_token" ]; then
+		dialog \
+			--colors \
+			--nocancel \
+			--title "$TITLE" \
+			--inputbox "\ZbINFO!\n\nTindakan ini memerlukan GitHub API token. Pesan ini muncul jika anda baru pertama kali menjalankan alat ini.\n\nSilahkan masukkan GitHub token anda:" 0 0 \
+			--output-fd 1 > $_HOME/.repodel_token
+	fi
+	_token_data
+	if [ -z "$_token_verif" ]; then
+		dialog \
+			--colors \
+			--nocancel \
+			--title "$TITLE" \
+			--inputbox "\Zb\Z1KESALAHAN!\Zn\n\nGitHub token tidak dapat dapat digunakan. Pastikan anda memasukkan token yang benar dan mempunyai delete_repo Authorization.\n\nM\n\nToken Scope: $_token_scope\nUser verif: $_user_verif\n\nMasukkan kembali GitHub token anda:" 0 0 \
+			--output-fd 1 > $_HOME/.repodel_token
+	fi
+}
+
+_msg_info() {
+	_info_username=$(cat $_TMP_DIR/rawuser | jq -r .login)
+	_info_name=$(cat $_TMP_DIR/rawuser | jq -r .name)
+	_info_total_repo=$(cat $_TMP_DIR/rawuser | jq -r .public_repos)
+	_info_account_type=$(cat $_TMP_DIR/rawuser | jq -r .type)
+	_select_info_msg="INFORMASI AKUN:\n  Username   : $_info_username\n  Nama       : $_info_name\n  Tipe akun  : $_info_account_type\n  Jumlah repo: $_info_total_repo\n\nSilahkan tandai repo yang akan anda hapus:"
+
+}
+
+_select(){
+	_msg_info
+	_repo_array=($(cat $_TMP_DIR/rawdata | jq -r '.[]|.name'))
+	_repo_list=$(printf '%s off\n' "${_repo_array[@]}")
+	_selected_repo=$(dialog \
+		--colors \
+		--cr-wrap \
+		--no-items \
+		--ok-label LANJUTKAN \
+		--cancel-label BATAL \
+		--title "$TITLE" \
+		--checklist "$_select_info_msg" 40 $_co 0 $_repo_list \
+		--output-fd 1)
+	_confirm
+}
+
+_confirm() {
+	if [ -z "$_selected_repo" ]; then
+		dialog \
+			--colors \
+			--title "$TITLE" \
+			--msgbox "\Zb\Z1INFO!\Zn\nTidak ada repo dipilih" 10 30
+		exit 1
+	fi
+	list=$(echo "$_selected_repo" | tr ' ' '\n')
+	msgwarn="\Zb\Z1PERINGATAN!\n\nTindakan ini akan menghapus:\n\n$list\n\nRepo yang sudah dihapus tidak dapat dibatalkan atau dikembalikan. Autor tidak bertanggung jawab atas akibat apapun yang disebabkan oleh penggunaan alat ini.\nDengan memilih YA berarti anda mengerti.\n\nDo It With Your Own Risk\Zn"
+	dialog \
+		--colors \
+		--yes-label "YA, saya mengerti" \
+		--no-label "TIDAK, batalkan" \
+		--defaultno \
+		--yesno "$msgwarn" 0 0
+	if [ $? -eq 0 ]; then
+		_check_token
+		_delete
+	else
+		exit 0
+	fi
+}
+
+_delete() {
+	(
+	_jobs=( $_selected_repo )
+	_count=${#_jobs[@]}
+	processed=1
+	for del in "${_jobs[@]}"; do
+		sleep 1
+		persen=$(( $processed * 100 / $_count ))
+		_DO_DELETE $del
+		echo -e "XXX\nMenghapus\n${del}${retmsg}\nXXX\n$persen"
+		if [ ! -z "$retmsg" ]; then
+			sleep 6
+			exit 1
+		fi
+		((processed++))
+	done
+) | dialog --colors --title "$TITLE" --gauge "Menghapus..." 10 $_co 0
+
+
+
+}
+
+_DO_DELETE(){
+	local _REP=$1
+	status=""
+	local status=$(curl -s \
+		-X DELETE \
+		-H "Accept: application/vnd.github.v3+json" \
+		-H "Authorization: token ${_token}" \
+		https://api.github.com/repos/${_USER}/$_REP | jq -r .message)
+	if [ ! -z "$status" ]; then
+		case $status in
+			Not*)
+				retmsg="\n\n\Zb\Z1ERROR!\Zn\n\nRepositori $_REP tidak ditemukan"
+				;;
+			Bad*)
+				retmsg="\n\n\Zb\Z1ERROR!\Zn\n\nToken salah"
+				;;
+			Must*)
+				retmsg="\n\n\Zb\Z1ERROR!\Zn\n\nToken salah atau token tidak punya izin hapus repositori"
+				;;
+			*)
+				retmsg="\n\n\Zb\Z1ERROR!\Zn\n\nKesalahan tidak diketahui"
+				;;
+		esac
+	fi
+
+}
+
+_get_data
+_select
+
