@@ -1,7 +1,7 @@
 ```
  © Rendiix <vanzdobz@gmail.com>
  Author     : Rendiix <vanzdobz@gmail.com>
- Diedit pada: 13.07.2021 10:40:27
+ Diedit pada: 13.07.2021 10:44:56
 ```
 [![GitHub](https://img.shields.io/github/license/rendiix/repository-cleaner.svg)](https://github.com/rendiix/repository-cleaner/blob/master/LICENSE)
 [![HitCount](http://hits.dwyl.io/rendiix/repository-cleaner.svg)](http://github.com/rendiix/repository-cleaner)
@@ -26,3 +26,8 @@
 ```console
 $ dpkg -i ./grd*.deb
 ```
+
+#### How to use
+
+```console
+$ grd <your_github_username>
